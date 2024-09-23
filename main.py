@@ -5,8 +5,6 @@ import requests
 
 import threeleggedaccesstoken
 import twoleggedaccesstoken
-from twoleggedaccesstoken import get_access_token
-from threeleggedaccesstoken import generate_access_token, generate_refresh_token, get_new_access_token
 
 TOKEN_FILE = "digikeytokenfile.json"
 MODE = 2
@@ -31,18 +29,17 @@ def check_inputs(params):
         print("The quantity of BOM ordered must be a number")
         return False
     return True
-def create_quote(tokens, currency):
-    url = "sandbox-api.digikey.com/quoting/v4/quotes"
-    url_data = {
-        "Authorization" : tokens["access_token"],
-        "X-DIGIKEY-Client-Id ": tokens["client_id"],
-        "X-DIGIKEY-Locale-Currency" : currency,
-        "X-DIGIKEY-Customer-Id" : tokens["customer_id"]
+def create_quote(access_token, access_token_type, tokens, quote_name):
+    url = "https://sandbox-api.digikey.com/quoting/v4/quotes"
+    headers = {
+        "Authorization": f"{access_token_type} {access_token}",
+        "X-DIGIKEY-Client-Id": tokens['client_id'],
+        "X-DIGIKEY-Locale-Currency": CURRENCY,
+        "X-DIGIKEY-Customer-Id": tokens["customer_id"]
     }
-    response = requests.post(url, url_data)
+    response = requests.post(url, headers=headers, data=quote_name)
     data = response.json()
-    print(data)
-    if response == 200:
+    if response.status_code == 200:
         print("Created new quote")
         return data['quoteID']
     else:
@@ -50,20 +47,26 @@ def create_quote(tokens, currency):
 
 def add_to_quote(quoteID, productID, tokens):
     url = f"sandbox-api.digikey.com/quoting/v4/quotes/{quoteID}/details"
-    pass
+    url_data = {
+        "quoteID" : quoteID,
+        "Authorization " : tokens["access_token"],
+        "X-DIGIKEY-Client-Id " : tokens["client_id"],
+        "X-DIGIKEY-Customer-Id " : tokens["customer_id"]
+    }
+
 
 def main(params, token_file, mode, currency):
+    params = ["Bill Of Materials PowerPortMax-v5.csv", 5] #TODO : get rid of this line for final build
     if not check_inputs(params):
         print("Please enter both a BOM and quantity of products to be quoted")
         return
     path = params[0]
-    path = "Bill Of Materials PowerPortMax-v5.csv" #TODO : get rid of this line for final build
     quantities = params[1]
     match mode:
         case 2:
-            twoleggedaccesstoken.get_access_token(token_file)
+            access_token, access_token_type = twoleggedaccesstoken.get_access_token(token_file)
         case 3:
-            threeleggedaccesstoken.generate_access_token(token_file)
+            access_token, access_token_type = threeleggedaccesstoken.generate_access_token(token_file)
         case _:
             print("A valid OAUTH legged mode is not given")
     with open(path, 'r') as bom:
@@ -74,10 +77,13 @@ def main(params, token_file, mode, currency):
             return
     with open(token_file, 'r') as file:
         tokens = json.load(file)
-    #quoteID = create_quote(tokens, CURRENCY)
+    quote_name = input("Please enter the name for this quote")
+    quoteID = create_quote(access_token, access_token_type, tokens, quote_name)
+    quotes = {}
     with open(path, 'r') as bom:
         for row in bom.readlines()[1:]:
-            print(row.split(',')[product_code_column])
+            row.split(',')[product_code_column]
+
 
 
 if __name__ == "__main__":
