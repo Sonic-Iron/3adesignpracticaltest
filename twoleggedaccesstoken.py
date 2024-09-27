@@ -14,12 +14,13 @@ def get_access_token(token_file):
         'grant_type': 'client_credentials'
     }
     response = requests.post(url, data=url_data)
-    data = response.json()
-    if response.status_code == 200: # successful request, and returned access_token
+    if response.status_code == 200:# successful request, and returned access_token
+        data = response.json()
         print("\nAccess token granted\n")
+        print(data['access_token'])
         access_token = data['access_token']
         access_token_type = data['token_type']
-    else: # not successful
+    else:# not successful
         print("access token denied")
 
     return access_token, access_token_type
